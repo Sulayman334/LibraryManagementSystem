@@ -43,7 +43,7 @@ public class BorrowBookService {
 
     }
 
-    public void ReturnBook(Long borrowBookId){
+    public void returnBook(Long borrowBookId){
 
        BorrowBook borrowBook = borrowBookRepository.findById(borrowBookId)
                .orElseThrow(()-> new EntityNotFoundException("Borrow Book not found"));
