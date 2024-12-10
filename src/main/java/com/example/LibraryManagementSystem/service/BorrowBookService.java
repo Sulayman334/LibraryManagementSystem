@@ -9,6 +9,7 @@ import com.example.LibraryManagementSystem.repository.StudentRepository;
 import jakarta.persistence.EntityNotFoundException;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -17,13 +18,13 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 public class BorrowBookService {
 
-
+    @Autowired
     private final BorrowBookRepository borrowBookRepository;
 
-
+    @Autowired
     private final StudentRepository studentRepository;
 
-
+    @Autowired
     private final BookRepository bookRepository;
 
     public void borrowBook(Long studentId, Long bookId){
@@ -40,30 +41,30 @@ public class BorrowBookService {
         borrowBook.setStudent(student);
         borrowBook.setBook(book);
         borrowBook.setBorrow_date(java.time.LocalDate.now());
-        borrowBook.setReturn_date(LocalDate.now().plusWeeks(1));
+        borrowBook.setDueDate(LocalDate.now().plusWeeks(1));
         borrowBook.setReturned(false);
         borrowBookRepository.save(borrowBook);
 
+        book.setAvailableCopies(book.getAvailableCopies() -1);
+        bookRepository.save(book);
     }
 
-    public void returnBook(Long borrowBookId){
+    public void returnBook(Long borrowBookId) {
 
-       BorrowBook borrowBook = borrowBookRepository.findById(borrowBookId)
-               .orElseThrow(()-> new EntityNotFoundException("Borrow Book not found"));
+        // Fetch the BorrowBook record
+        BorrowBook borrowBook = borrowBookRepository.findById(borrowBookId)
+                .orElseThrow(() -> new EntityNotFoundException("Borrow Book not found"));
 
-       if ((borrowBook.getReturned())){
-           throw new RuntimeException("Book already returned");
-       }
 
-       Book book = borrowBook.getBook();
-       book.returnBook();
-       bookRepository.save(book);
+        if (borrowBook.getReturned()) {
+            throw new RuntimeException("Book already returned");
+        }
 
-       borrowBook.setReturned(true);
-       borrowBook.setReturn_date(LocalDate.now());
-       borrowBookRepository.save(borrowBook);
+        Book book = borrowBook.getBook();
+        borrowBook.setReturn_date(LocalDate.now());
+        borrowBook.setReturned(true);
+        borrowBookRepository.save(borrowBook);
+        book.setAvailableCopies(book.getAvailableCopies() + 1);
+        bookRepository.save(book);
     }
-
-
-
 }

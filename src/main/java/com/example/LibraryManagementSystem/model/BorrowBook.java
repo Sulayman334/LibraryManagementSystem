@@ -25,7 +25,7 @@ public class BorrowBook {
     @Column( name = "borrowed_date",nullable = false)
     private LocalDate borrow_date;
 
-    @Column(name = "return_date", nullable = false)
+    @Column(name = "return_date")
     private LocalDate return_date;
 
     @Column(name = "due_date", nullable = false)
