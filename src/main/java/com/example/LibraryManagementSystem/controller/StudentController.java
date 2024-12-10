@@ -15,12 +15,12 @@ public class StudentController {
 
     private final StudentService studentService;
 
-    @PostMapping("/addStudent")
+    @PostMapping("/add")
     public Student addStudent(@RequestBody Student student) {
         return studentService.addStudent(student);
     }
 
-    @DeleteMapping("/deleteStudent/{id}")
+    @DeleteMapping("/delete/{id}")
     public void deleteStudentById(@PathVariable Long id) {
         studentService.deleteStudent(id);
     }
