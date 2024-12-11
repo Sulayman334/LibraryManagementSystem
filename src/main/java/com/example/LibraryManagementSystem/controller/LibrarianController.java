@@ -40,4 +40,10 @@ public class LibrarianController {
     public Librarian getLibrarianById(@PathVariable Long id){
         return librarianService.getLibrarianById(id);
     }
+
+
+    @GetMapping("/getLibrarianByName/{name}")
+    public Librarian getLibrarianByName(@PathVariable String name){
+        return (Librarian) librarianService.loadUserByUsername(name);
+    }
 }

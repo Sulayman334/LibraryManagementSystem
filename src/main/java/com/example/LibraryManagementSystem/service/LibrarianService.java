@@ -3,13 +3,16 @@ package com.example.LibraryManagementSystem.service;
 import com.example.LibraryManagementSystem.model.Librarian;
 import com.example.LibraryManagementSystem.repository.LibrarianRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @RequiredArgsConstructor
 @Service
-public class LibrarianService {
+public class LibrarianService implements UserDetailsService {
 
     private final LibrarianRepository librarianRepository;
 
@@ -46,4 +49,12 @@ public class LibrarianService {
         return librarianRepository.findAll();
     }
 
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        Librarian librarian = (Librarian) librarianRepository.
+                findByUsername(username).orElseThrow(() -> new
+                        UsernameNotFoundException("Librarian not found with username: " + username));
+        return new org.springframework.security.core.
+                userdetails.User(librarian.getUsername(), librarian.getPassword(), List.of());
+    }
 }
