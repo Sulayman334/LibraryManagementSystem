@@ -5,6 +5,7 @@ import com.example.LibraryManagementSystem.exceptions.InvalidRoleException;
 import com.example.LibraryManagementSystem.exceptions.NullUserDetails;
 import com.example.LibraryManagementSystem.exceptions.UserAlreadyExistException;
 import com.example.LibraryManagementSystem.model.AuthenticationResponse;
+import com.example.LibraryManagementSystem.model.MessageResponse;
 import com.example.LibraryManagementSystem.model.User;
 import com.example.LibraryManagementSystem.repository.UserRepository;
 import com.example.LibraryManagementSystem.service.AuthenticationService;
@@ -21,62 +22,64 @@ import org.springframework.web.bind.annotation.*;
 public class AuthenticationController {
 
     private final AuthenticationService authService;
-
     private final UserRepository userRepository;
 
+    /**
+     * Register a new user.
+     * Only accessible by users with ADMIN role.
+     */
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     @PostMapping("/register")
-    public ResponseEntity<AuthenticationResponse> register
-            (@RequestBody User
-                     request){
-            try {
-                authService.register(request);
-                return ResponseEntity.ok(new AuthenticationResponse("User registered successfully." + request.getTokens()));
-            }catch (UserAlreadyExistException e) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(new AuthenticationResponse(e.getMessage()));
-            }catch (NullUserDetails e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AuthenticationResponse(e.getMessage()));
-            }catch (InvalidRoleException e){
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new AuthenticationResponse(e.getMessage()));
-            }catch (Exception e){
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthenticationResponse("An unexpected error occurred"));
-            }
+    public ResponseEntity<?> register(@RequestBody User request){
+        try {
+            authService.registerUserByAdmin(request);
+            return ResponseEntity.ok(new MessageResponse("User registered successfully."));
+        } catch (UserAlreadyExistException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new MessageResponse(e.getMessage()));
+        } catch (NullUserDetails e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new MessageResponse(e.getMessage()));
+        } catch (InvalidRoleException e){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new MessageResponse(e.getMessage()));
+        } catch (Exception e){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new MessageResponse("An unexpected error occurred"));
+        }
     }
 
-
-
+    /**
+     * Authenticate a user (login).
+     * Accessible by any authenticated user.
+     */
     @PostMapping("/login")
     public ResponseEntity<AuthenticationResponse> login(@RequestBody User request){
         try{
             return ResponseEntity.ok(authService.authenticate(request));
-
-        }catch (NullUserDetails e){
+        } catch (NullUserDetails e){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AuthenticationResponse(e.getMessage()));
-        }
-        catch (InvalidCredentialsException e){
+        } catch (InvalidCredentialsException e){
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new AuthenticationResponse(e.getMessage()));
-        }catch (UsernameNotFoundException e){
+        } catch (UsernameNotFoundException e){
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new AuthenticationResponse("User not found"));
-        }
-        catch (Exception e){
+        } catch (Exception e){
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthenticationResponse("An unexpected error occurred"));
         }
     }
 
-
-
+    /**
+     * Delete a user by username.
+     * Only accessible by users with ADMIN role.
+     */
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     @DeleteMapping("/delete/{username}")
-    public ResponseEntity<String> deleteUser(@PathVariable String username){
+    public ResponseEntity<?> deleteUser(@PathVariable String username){
         try {
             authService.deleteUser(username);
-            return ResponseEntity.ok(username+" deleted successfully");
-        }catch (NullUserDetails e){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
-        catch (UsernameNotFoundException e){
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-        }
-        catch (Exception e){
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred");
+            return ResponseEntity.ok(new MessageResponse(username + " deleted successfully"));
+        } catch (NullUserDetails e){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new MessageResponse(e.getMessage()));
+        } catch (UsernameNotFoundException e){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new MessageResponse("User not found"));
+        } catch (Exception e){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new MessageResponse("An unexpected error occurred"));
         }
     }
 }

@@ -21,7 +21,6 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-//@AllArgsConstructor
 public class AuthenticationService {
 
     private final UserRepository repository;
@@ -30,7 +29,10 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final TokenRepository tokenRepository;
 
-
+    /**
+     * Registers a new user and returns an AuthenticationResponse with a JWT token.
+     * Used for user self-registration (if applicable).
+     */
     public AuthenticationResponse register(User request) {
         if (repository.existsByUsername(request.getUsername())) {
             throw new UserAlreadyExistException(request.getUsername() + " already exists");
@@ -47,7 +49,7 @@ public class AuthenticationService {
 
         // Validate role if necessary
         if (request.getRole() != Role.ROLE_ADMIN && request.getRole() != Role.ROLE_LIBRARIAN){
-            throw new InvalidRoleException("Role must be a valid role  " + request.getRole().name());
+            throw new InvalidRoleException("Role must be a valid role: " + request.getRole().name());
         }
 
         User user = new User();
@@ -67,6 +69,39 @@ public class AuthenticationService {
         return new AuthenticationResponse(jwt);
     }
 
+    /**
+     * Registers a new user by an admin without returning a token.
+     */
+    public void registerUserByAdmin(User request) {
+        if (repository.existsByUsername(request.getUsername())) {
+            throw new UserAlreadyExistException(request.getUsername() + " already exists");
+        }
+
+        validateField(request.getFirstName(), "User's first name");
+        validateField(request.getLastName(), "User's last name");
+        validateField(request.getUsername(), "Username");
+        validateField(request.getPassword(), "Password");
+
+        if (request.getRole() == null) {
+            throw new NullUserDetails("User's role cannot be null");
+        }
+
+        // Validate role if necessary
+        if (request.getRole() != Role.ROLE_ADMIN && request.getRole() != Role.ROLE_LIBRARIAN){
+            throw new InvalidRoleException("Role must be a valid role: " + request.getRole().name());
+        }
+
+        User user = new User();
+        user.setFirstName(request.getFirstName());
+        user.setInitial(request.getInitial());
+        user.setLastName(request.getLastName());
+        user.setUsername(request.getUsername());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(request.getRole());
+
+        repository.save(user);
+    }
+
     private void saveUserToken(String jwt, User user) {
         Token token = new Token();
         token.setToken(jwt);
@@ -81,7 +116,9 @@ public class AuthenticationService {
         }
     }
 
-
+    /**
+     * Authenticates a user and returns an AuthenticationResponse with a JWT token.
+     */
     public AuthenticationResponse authenticate(User request){
         if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
             throw new NullUserDetails("Username cannot be null or empty");
@@ -95,33 +132,33 @@ public class AuthenticationService {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
                     request.getUsername(), request.getPassword()
             ));
-
-        }catch (Exception e){
+        } catch (Exception e){
             throw new InvalidCredentialsException("Invalid username or password");
         }
 
-
         User user = repository.findByUsername(request.getUsername())
-                .orElseThrow(()->new UsernameNotFoundException("Username " + request.getUsername()));
+                .orElseThrow(() -> new UsernameNotFoundException("Username " + request.getUsername()));
+
         String token = jwtService.generateToken(user);
 
         revokeAllTokenByUser(user);
 
-
-        saveUserToken(token,user);
+        saveUserToken(token, user);
 
         return new AuthenticationResponse(token);
-
     }
 
-
+    /**
+     * Deletes a user by username.
+     */
     public void deleteUser(String username){
-        if (username == null){
-            throw new NullUserDetails("Username cannot be null");
+        if (username == null || username.trim().isEmpty()){
+            throw new NullUserDetails("Username cannot be null or empty");
         }
 
         User user = repository.findByUsername(username)
-                .orElseThrow(()->new UsernameNotFoundException("Username " + username +" not found"));
+                .orElseThrow(() -> new UsernameNotFoundException("Username " + username +" not found"));
+
         tokenRepository.deleteByUser(user);
         repository.delete(user);
     }
@@ -133,6 +170,4 @@ public class AuthenticationService {
         }
         tokenRepository.saveAll(validTokensListedByUser);
     }
-
-
 }

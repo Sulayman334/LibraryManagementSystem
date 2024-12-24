@@ -7,8 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+
 import java.util.Collection;
 import java.util.List;
 
@@ -36,48 +36,38 @@ public class User implements UserDetails {
     @Column(name = "username" , nullable = false , unique = true)
     private String username;
 
-    @Column(name = "password" , nullable = false , unique = true)
+    @Column(name = "password" , nullable = false)
     private String password;
 
-    @Column(name = "role", nullable = false,length = 20)
+    @Column(name = "role", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    @OneToMany(mappedBy ="user")
-    private List <Token> tokens;
+    @OneToMany(mappedBy ="user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Token> tokens;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(role.name()));
-    }
-
-    @Override
-    public String getPassword() {
-        return password;
-    }
-
-    @Override
-    public String getUsername() {
-        return username;
+        return List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority(role.name()));
     }
 
     @Override
     public boolean isAccountNonExpired() {
-        return UserDetails.super.isAccountNonExpired(); // returning true by default
+        return true; // Customize as needed
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return UserDetails.super.isAccountNonLocked();
+        return true; // Customize as needed
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return UserDetails.super.isCredentialsNonExpired();
+        return true; // Customize as needed
     }
 
     @Override
     public boolean isEnabled() {
-        return UserDetails.super.isEnabled();
+        return true; // Customize as needed
     }
 }

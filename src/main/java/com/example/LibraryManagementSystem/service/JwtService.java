@@ -6,76 +6,97 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.function.Function;
-@Data
+
 @Service
-public class JwtService {  // create a class called JwtService
-    // 1st create the secret key(generated from asecuitysite.com)
-    private final String SECRET_KEY = "3d500891a245738f4ab04256dc1981a812ceb6e50b0ced50981d2f018f58a12b";
+@RequiredArgsConstructor
+public class JwtService {  // JwtService handles JWT token operations
+
+    @Value("${jwt.secret}") // Injected from application.properties or environment variable
+    private String SECRET_KEY;
 
     private final TokenRepository tokenRepository;
 
-    // 6 extract username from the claim
+    /**
+     * Extract username from the JWT token.
+     */
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    // 7 validate the token
-    public boolean isValid(String token, User user) {
-        String username = extractUsername(token);
-
-        boolean isValidToken = tokenRepository.findByToken(token).map(t->!t.getLoggedOut()).orElse(false);
-        return (username.equals(user.getUsername()))  && !isTokenExpired(token) && isValidToken;
-    }
-
-    // 8 check if the token is expired
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-
-    }
-
-    //9 extract the expiration time, after that create another class for the filter
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
-
-    //5th extract a specific claim
+    /**
+     * Extract a specific claim using a resolver function.
+     */
     public <T> T extractClaim(String token, Function<Claims, T> resolver) {
         Claims claims = extractAllClaims(token);
         return resolver.apply(claims);
     }
 
-
-    // 4th extract the payload from the token
+    /**
+     * Extract all claims from the token.
+     */
     private Claims extractAllClaims(String token){
         return Jwts
                 .parser()
-                .verifyWith(getSigninKey())
+                .setSigningKey(getSigningKey())
                 .build()
-                .parseSignedClaims(token)
-                .getPayload();
+                .parseClaimsJws(token)
+                .getBody();
     }
 
-    //2nd generate the token
+    /**
+     * Check if the token has expired.
+     */
+    private boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
+    }
+
+    /**
+     * Extract expiration date from the token.
+     */
+    private Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    /**
+     * Validate the JWT token.
+     */
+    public boolean isValid(String token) {
+        try {
+            String username = extractUsername(token);
+            User user = tokenRepository.findByToken(token)
+                    .map(t -> t.getUser())
+                    .orElse(null);
+            return (username != null && user != null && !isTokenExpired(token));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Generate a JWT token for the user.
+     */
     public String generateToken(User user) {
-        String token = Jwts.builder()
-                .subject(user.getUsername())
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
-                .signWith(getSigninKey())
+        return Jwts.builder()
+                .setSubject(user.getUsername())
+                .claim("role", user.getRole().name()) // Include role in token
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000)) // 24 hours
+                .signWith(getSigningKey())
                 .compact();
-        return token;
     }
 
-    // 3rd create the signIn key method
-    private SecretKey getSigninKey(){
-        byte [] keyBytes = Decoders.BASE64URL.decode(SECRET_KEY);
+    /**
+     * Get the signing key using the secret key.
+     */
+    private SecretKey getSigningKey(){
+        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }
